@@ -35,7 +35,11 @@ import {
   getLinkHandleFromCoords,
 } from "../components/hyperlink/helpers";
 
-import { bootstrapCanvas, getNormalizedCanvasDimensions } from "./helpers";
+import {
+  bootstrapCanvas,
+  fillCircle,
+  getNormalizedCanvasDimensions,
+} from "./helpers";
 
 import type {
   StaticCanvasRenderConfig,
@@ -43,15 +47,9 @@ import type {
 } from "../scene/types";
 import type { StaticCanvasAppState, Zoom } from "../types";
 
-const GridLineColor = {
-  [THEME.LIGHT]: {
-    bold: "#dddddd",
-    regular: "#e5e5e5",
-  },
-  [THEME.DARK]: {
-    bold: applyDarkModeFilter("#dddddd"),
-    regular: applyDarkModeFilter("#e5e5e5"),
-  },
+const GridDotColor = {
+  [THEME.LIGHT]: "#c4c4c4",
+  [THEME.DARK]: applyDarkModeFilter("#c4c4c4"),
 } as const;
 
 const strokeGrid = (
@@ -59,7 +57,7 @@ const strokeGrid = (
   /** grid cell pixel size */
   gridSize: number,
   /** setting to 1 will disble bold lines */
-  gridStep: number,
+  _gridStep: number,
   scrollX: number,
   scrollY: number,
   zoom: Zoom,
@@ -70,63 +68,34 @@ const strokeGrid = (
   const offsetX = (scrollX % gridSize) - gridSize;
   const offsetY = (scrollY % gridSize) - gridSize;
 
-  const actualGridSize = gridSize * zoom.value;
-
-  const spaceWidth = 1 / zoom.value;
+  // Skip rendering if grid is too small
+  if (gridSize * zoom.value < 10) {
+    return;
+  }
 
   context.save();
 
-  // Offset rendering by 0.5 to ensure that 1px wide lines are crisp.
-  // We only do this when zoomed to 100% because otherwise the offset is
-  // fractional, and also visibly offsets the elements.
-  // We also do this per-axis, as each axis may already be offset by 0.5.
+  // Apply pixel alignment for crisp rendering
   if (zoom.value === 1) {
     context.translate(offsetX % 1 ? 0 : 0.5, offsetY % 1 ? 0 : 0.5);
   }
 
-  // vertical lines
-  for (let x = offsetX; x < offsetX + width + gridSize * 2; x += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round(x - scrollX) % (gridStep * gridSize) === 0;
-    // don't render regular lines when zoomed out and they're barely visible
-    if (!isBold && actualGridSize < 10) {
-      continue;
-    }
+  context.fillStyle = GridDotColor[theme];
 
-    const lineWidth = Math.min(1 / zoom.value, isBold ? 4 : 1);
-    context.lineWidth = lineWidth;
-    const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
-
-    context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
-    context.moveTo(x, offsetY - gridSize);
-    context.lineTo(x, Math.ceil(offsetY + height + gridSize * 2));
-    context.stroke();
-  }
+  // Edge fade margin (in model units)
+  const fadeMargin = 0.1 * Math.min(width, height);
 
   for (let y = offsetY; y < offsetY + height + gridSize * 2; y += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round(y - scrollY) % (gridStep * gridSize) === 0;
-    if (!isBold && actualGridSize < 10) {
-      continue;
+    for (let x = offsetX; x < offsetX + width + gridSize * 2; x += gridSize) {
+      const edgeDist = Math.max(0, Math.min(x, y, width - x, height - y));
+      const alpha =
+        edgeDist >= fadeMargin ? 1 : 0.4 + 0.6 * (edgeDist / fadeMargin);
+      context.globalAlpha = alpha;
+      fillCircle(context, x, y, 1, false);
     }
-
-    const lineWidth = Math.min(1 / zoom.value, isBold ? 4 : 1);
-    context.lineWidth = lineWidth;
-    const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
-
-    context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
-    context.moveTo(offsetX - gridSize, y);
-    context.lineTo(Math.ceil(offsetX + width + gridSize * 2), y);
-    context.stroke();
   }
+
+  context.globalAlpha = 1;
   context.restore();
 };
 
@@ -247,7 +216,7 @@ const _renderStaticScene = ({
     return;
   }
 
-  const { renderGrid = true, isExporting } = renderConfig;
+  const { renderDotBackground, isExporting } = renderConfig;
 
   const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
     canvas,
@@ -267,8 +236,8 @@ const _renderStaticScene = ({
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
 
-  // Grid
-  if (renderGrid) {
+  // Dot background
+  if (renderDotBackground) {
     strokeGrid(
       context,
       appState.gridSize,

@@ -2387,6 +2387,7 @@ class App extends React.Component<AppProps, AppState> {
                               imageCache: this.imageCache,
                               isExporting: false,
                               renderGrid: isGridModeEnabled(this),
+                              renderDotBackground: true,
                               canvasBackgroundColor:
                                 this.state.viewBackgroundColor,
                               embedsValidationStatus:
@@ -2410,6 +2411,7 @@ class App extends React.Component<AppProps, AppState> {
                                 imageCache: this.imageCache,
                                 isExporting: false,
                                 renderGrid: false,
+                                renderDotBackground: false,
                                 canvasBackgroundColor:
                                   this.state.viewBackgroundColor,
                                 embedsValidationStatus:

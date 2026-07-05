@@ -50,6 +50,7 @@ import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
+import { PortraitOutlineGuide } from "./PortraitOutlineGuide";
 import ElementLinkDialog from "./ElementLinkDialog";
 import { ErrorDialog } from "./ErrorDialog";
 import { EyeDropper, activeEyeDropperAtom } from "./EyeDropper";
@@ -624,6 +625,9 @@ const LayerUI = ({
             }
           >
             {renderWelcomeScreen && <tunnels.WelcomeScreenCenterTunnel.Out />}
+            {appState.portraitOutlineGuideEnabled && (
+              <PortraitOutlineGuide appState={appState} />
+            )}
             {renderFixedSideContainer()}
             <Footer
               appState={appState}
